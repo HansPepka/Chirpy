@@ -1,3 +1,8 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+
+# Personal markdown notes
 HTTP_servers.md
-/node_modules
-/dist
