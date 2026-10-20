@@ -19,3 +19,7 @@ app.use("/app", express.static("./src/app"));
 app.listen(PORT, () => {
   console.log(`Server is running at http://localhost:${PORT}`);
 });
+
+
+// --- 2 - Creating the middleware which  logs non-OK responses----
+type Middleware = (req: Request, res: Response, next: () => void) => void;
