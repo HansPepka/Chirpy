@@ -13,7 +13,7 @@ const handlerReadiness = (req: Request, res: Response) => {
 };
 // Calling the readiness handler when the /healthz endpoint is accessed
 app.get("/healthz", handlerReadiness);
-
+app.use(middlewareLogResponses);
 app.use("/app", express.static("./src/app"));
 
 app.listen(PORT, () => {
@@ -22,4 +22,18 @@ app.listen(PORT, () => {
 
 
 // --- 2 - Creating the middleware which  logs non-OK responses----
-type Middleware = (req: Request, res: Response, next: () => void) => void;
+function middlewareLogResponses(req: Request, res: Response, next: () => void) {
+  // Store the original send function
+  const originalSend = res.send;
+
+  res.on("finish", () => {
+    if (res.statusCode !== 200) {
+      console.log(`[NON-OK] ${req.method} ${req.originalUrl} - Status: ${res.statusCode}`);
+    }
+});
+
+  // Call the next middleware in the stack
+  next();
+}
+
+
