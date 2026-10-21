@@ -1,5 +1,6 @@
-import express from "express";
+import express, { NextFunction } from "express";
 import {Request, Response} from "express";
+import "./config.js";
 
 const app = express();
 const PORT = 8080;
@@ -34,6 +35,10 @@ function middlewareLogResponses(req: Request, res: Response, next: () => void) {
 
   // Call the next middleware in the stack
   next();
+}
+
+function middlewareMetricsInc(req: Request, res: Response, next: NextFunction){
+  
 }
 
 
