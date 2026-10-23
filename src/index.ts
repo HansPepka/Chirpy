@@ -16,8 +16,17 @@ const handlerReadiness = (req: Request, res: Response) => {
 
 // Defining the handler that writes the number of requests that have been counted
 const handlerMetrics  = (req: Request, res: Response) => {
-  res.set("Content-Type", "text/plain; charset=utf-8");
-  res.send(`Hits: ${config.fileserverHits}`);
+  res.set("Content-Type", "text/html; charset=utf-8");
+  res.send(
+    `
+    <html>
+  <body>
+    <h1>Welcome, Chirpy Admin</h1>
+    <p>Chirpy has been visited ${config.fileserverHits} times!</p>
+  </body>
+</html>
+    `
+  );
 }
 
 // Defining the handler that resets the fileserverHits counter to 0
@@ -28,13 +37,13 @@ const handlerResetMetrics = (req: Request, res: Response) => {
 }
 
 // Calling the readiness handler when the /healthz endpoint is accessed
-app.get("/healthz", handlerReadiness);
+app.get("/api/healthz", handlerReadiness);
 
 // Calling the metrics handler when the /metrics endpoint is accessed
-app.get("/metrics", handlerMetrics);
+app.get("/admin/metrics", handlerMetrics);
 
 // Calling the reset-metrics handler when the /reset endpoint is accessed
-app.get("/reset", handlerResetMetrics);
+app.post("/admin/reset", handlerResetMetrics);
 
 // Middleware to log non-OK responses
 app.use(middlewareLogResponses);
