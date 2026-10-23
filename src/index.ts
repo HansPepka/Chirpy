@@ -36,6 +36,7 @@ const handlerResetMetrics = (req: Request, res: Response) => {
   res.send(`Hits counter reset to: ${config.fileserverHits}`);
 }
 
+
 // Calling the readiness handler when the /healthz endpoint is accessed
 app.get("/api/healthz", handlerReadiness);
 
@@ -52,6 +53,8 @@ app.use(middlewareLogResponses);
 app.use(middlewareMetricsInc);
 
 app.use("/app", express.static("./src/app"));
+
+app.post("/api/validate_chirp", handlerValidateChirp);
 
 app.listen(PORT, () => {
   console.log(`Server is running at http://localhost:${PORT}`);
@@ -78,4 +81,43 @@ function middlewareMetricsInc(req: Request, res: Response, next: NextFunction){
   next();
 }
 
+export async function handlerValidateChirp(req: Request, res: Response) {
+  type responseData = {
+    body: string;
+  };
+  let rawBody = "";
 
+  // 1. The request body arrives in pieces ("chunks") — collect them
+  req.on("data", (chunk) => {
+    rawBody += chunk;
+  });
+
+  // 2. When everything has arrived, process it
+  req.on("end", () => {
+    res.header("Content-Type", "application/json");
+
+    // 3. Turn the JSON text into a JavaScript object (this is the risky part)
+    let params: responseData;
+    try {
+      params = JSON.parse(rawBody);
+    } catch (error) {
+      res.status(400).send(JSON.stringify({ error: "Something went wrong" }));
+      return;
+    }
+
+    // 4. Make sure "body" actually exists and is text
+    if (typeof params.body !== "string") {
+      res.status(400).send(JSON.stringify({ error: "Something went wrong" }));
+      return;
+    }
+
+    // 5. Apply the 140-character rule
+    if (params.body.length > 140) {
+      res.status(400).send(JSON.stringify({ error: "Chirp is too long" }));
+      return;
+    }
+
+    // 6. All good
+    res.status(200).send(JSON.stringify({ valid: true }));
+  });
+}
