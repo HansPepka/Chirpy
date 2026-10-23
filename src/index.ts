@@ -1,6 +1,6 @@
 import express, { NextFunction } from "express";
 import {Request, Response} from "express";
-import "./config.js";
+import {config}  from "./config.js";
 
 const app = express();
 const PORT = 8080;
@@ -12,9 +12,36 @@ const handlerReadiness = (req: Request, res: Response) => {
   res.set("Content-Type", "text/plain; charset=utf-8");
   res.send("OK");
 };
+
+
+// Defining the handler that writes the number of requests that have been counted
+const handlerMetrics  = (req: Request, res: Response) => {
+  res.set("Content-Type", "text/plain; charset=utf-8");
+  res.send(`Hits: ${config.fileserverHits}`);
+}
+
+// Defining the handler that resets the fileserverHits counter to 0
+const handlerResetMetrics = (req: Request, res: Response) => {
+  config.fileserverHits = 0;
+  res.set("Content-Type", "text/plain; charset=utf-8");
+  res.send(`Hits counter reset to: ${config.fileserverHits}`);
+}
+
 // Calling the readiness handler when the /healthz endpoint is accessed
 app.get("/healthz", handlerReadiness);
+
+// Calling the metrics handler when the /metrics endpoint is accessed
+app.get("/metrics", handlerMetrics);
+
+// Calling the reset-metrics handler when the /reset endpoint is accessed
+app.get("/reset", handlerResetMetrics);
+
+// Middleware to log non-OK responses
 app.use(middlewareLogResponses);
+
+// Middleware to increment the fileserverHits counter
+app.use(middlewareMetricsInc);
+
 app.use("/app", express.static("./src/app"));
 
 app.listen(PORT, () => {
@@ -38,7 +65,8 @@ function middlewareLogResponses(req: Request, res: Response, next: () => void) {
 }
 
 function middlewareMetricsInc(req: Request, res: Response, next: NextFunction){
-  
+  config.fileserverHits++;
+  next();
 }
 
 

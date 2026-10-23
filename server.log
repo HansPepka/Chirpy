@@ -4,5 +4,13 @@
 
 Server is running at http://localhost:8080
 [NON-OK] GET / - Status: 404
-[NON-OK] GET /non-existent-path - Status: 404
-[NON-OK] GET /non-existent-path - Status: 404
+[NON-OK] GET / - Status: 404
+[NON-OK] GET / - Status: 404
+[NON-OK] GET / - Status: 404
+[NON-OK] GET / - Status: 404
+[NON-OK] GET / - Status: 404
+[NON-OK] GET / - Status: 404
+[NON-OK] GET / - Status: 404
+[NON-OK] GET / - Status: 404
+[NON-OK] GET / - Status: 404
+[NON-OK] GET / - Status: 404
