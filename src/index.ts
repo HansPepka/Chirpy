@@ -49,6 +49,9 @@ app.post("/admin/reset", handlerResetMetrics);
 // Middleware to log non-OK responses
 app.use(middlewareLogResponses);
 
+// Middleware to parse JSON bodies automatically, so we don't have to manually collect chunks of data
+app.use(express.json());
+
 // Middleware to increment the fileserverHits counter
 app.use(middlewareMetricsInc);
 
@@ -70,7 +73,7 @@ function middlewareLogResponses(req: Request, res: Response, next: () => void) {
     if (res.statusCode !== 200) {
       console.log(`[NON-OK] ${req.method} ${req.originalUrl} - Status: ${res.statusCode}`);
     }
-});
+  });
 
   // Call the next middleware in the stack
   next();
@@ -81,43 +84,31 @@ function middlewareMetricsInc(req: Request, res: Response, next: NextFunction){
   next();
 }
 
+// Create a list of words to be filtered out
+const list = ["kerfuffle", "sharbert", "fornax"];
+
+
+// --- 3 - Creating the handler that validates the chirp ----
 export async function handlerValidateChirp(req: Request, res: Response) {
   type responseData = {
     body: string;
   };
-  let rawBody = "";
 
-  // 1. The request body arrives in pieces ("chunks") — collect them
-  req.on("data", (chunk) => {
-    rawBody += chunk;
-  });
-
-  // 2. When everything has arrived, process it
-  req.on("end", () => {
-    res.header("Content-Type", "application/json");
-
-    // 3. Turn the JSON text into a JavaScript object (this is the risky part)
-    let params: responseData;
-    try {
-      params = JSON.parse(rawBody);
-    } catch (error) {
-      res.status(400).send(JSON.stringify({ error: "Something went wrong" }));
-      return;
+  // 3. Turn the JSON text into a JavaScript object (this is the risky part)
+  const params: responseData = req.body;
+ 
+  // 5. Apply the 140-character rule
+  if (params.body.length > 140) {
+     res.status(400).send({ error: "Chirp is too long" });
+     return;
+  }
+  
+  let list1 = params.body.split(" ");
+    for (const word of list) {
+     list1 = list1.map((w) => w.toLowerCase() === word ? "****" : w);
     }
+  params.body = list1.join(" ");
 
-    // 4. Make sure "body" actually exists and is text
-    if (typeof params.body !== "string") {
-      res.status(400).send(JSON.stringify({ error: "Something went wrong" }));
-      return;
-    }
-
-    // 5. Apply the 140-character rule
-    if (params.body.length > 140) {
-      res.status(400).send(JSON.stringify({ error: "Chirp is too long" }));
-      return;
-    }
-
-    // 6. All good
-    res.status(200).send(JSON.stringify({ valid: true }));
-  });
+  // 6. All good
+  res.status(200).send({"cleanedBody": `${params.body}`});
 }
