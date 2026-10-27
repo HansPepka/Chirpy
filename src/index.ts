@@ -36,6 +36,40 @@ const handlerResetMetrics = (req: Request, res: Response) => {
   res.send(`Hits counter reset to: ${config.fileserverHits}`);
 }
 
+// Create a list of words to be filtered out
+const list = ["kerfuffle", "sharbert", "fornax"];
+
+
+// --- 3 - Creating the handler that validates the chirp ----
+async function handlerValidateChirp(req: Request, res: Response) {
+  type responseData = {
+    body: string;
+  };
+
+  // 3. Turn the JSON text into a JavaScript object (this is the risky part)
+  const params: responseData = req.body;
+ 
+  // 5. Apply the 140-character rule
+  if (params.body.length > 140) {
+     throw new Error("Chirp is too long");
+  }
+  
+  let list1 = params.body.split(" ");
+    for (const word of list) {
+     list1 = list1.map((w) => w.toLowerCase() === word ? "****" : w);
+    }
+  params.body = list1.join(" ");
+
+  // 6. All good
+  res.status(200).send({"cleanedBody": `${params.body}`});
+}
+
+// Error-handling middleware
+
+const errorHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {
+  console.error(err);
+  res.status(500).send({ error: "Something went wrong on our end" });
+};
 
 // Calling the readiness handler when the /healthz endpoint is accessed
 app.get("/api/healthz", handlerReadiness);
@@ -58,6 +92,8 @@ app.use(middlewareMetricsInc);
 app.use("/app", express.static("./src/app"));
 
 app.post("/api/validate_chirp", handlerValidateChirp);
+
+app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log(`Server is running at http://localhost:${PORT}`);
@@ -84,31 +120,7 @@ function middlewareMetricsInc(req: Request, res: Response, next: NextFunction){
   next();
 }
 
-// Create a list of words to be filtered out
-const list = ["kerfuffle", "sharbert", "fornax"];
 
 
-// --- 3 - Creating the handler that validates the chirp ----
-export async function handlerValidateChirp(req: Request, res: Response) {
-  type responseData = {
-    body: string;
-  };
 
-  // 3. Turn the JSON text into a JavaScript object (this is the risky part)
-  const params: responseData = req.body;
- 
-  // 5. Apply the 140-character rule
-  if (params.body.length > 140) {
-     res.status(400).send({ error: "Chirp is too long" });
-     return;
-  }
-  
-  let list1 = params.body.split(" ");
-    for (const word of list) {
-     list1 = list1.map((w) => w.toLowerCase() === word ? "****" : w);
-    }
-  params.body = list1.join(" ");
 
-  // 6. All good
-  res.status(200).send({"cleanedBody": `${params.body}`});
-}
