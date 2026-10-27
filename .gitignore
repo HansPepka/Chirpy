@@ -6,3 +6,6 @@ dist
 
 # Personal markdown notes
 HTTP_servers.md
+
+# Environment variables :
+.env
