@@ -5,6 +5,8 @@ import {config}  from "./config.js";
 const app = express();
 const PORT = 8080;
 
+// # Creating handlers
+
 //--- 1 - Adding the readiness endpoint ----
 
 // Defining the readiness handler
@@ -51,7 +53,7 @@ async function handlerValidateChirp(req: Request, res: Response) {
  
   // 5. Apply the 140-character rule
   if (params.body.length > 140) {
-     throw new Error("Chirp is too long");
+     throw new BadRequestError("Chirp is too long. Max length is 140");
   }
   
   let list1 = params.body.split(" ");
@@ -64,17 +66,29 @@ async function handlerValidateChirp(req: Request, res: Response) {
   res.status(200).send({"cleanedBody": `${params.body}`});
 }
 
-// Error-handling middleware
+// Error-handling middleware: we defined how the server should throw errors based on the code.
 
 const errorHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error(err);
-  res.status(500).send({ error: "Something went wrong on our end" });
+  if (err instanceof NotFoundError){
+    res.status(404).json({error: err.message})
+  }
+  else if(err instanceof BadRequestError){
+    res.status(400).json({error: err.message})
+  }
+  else if(err instanceof UnauthorizedError){
+    res.status(401).json({error: err.message})
+  }
+  else if(err instanceof ForbiddenError){
+    res.status(403).json({error: err.message})
+  }
 };
+
+// # Callling handlers, middlewares and defining endpoints
 
 // Calling the readiness handler when the /healthz endpoint is accessed
 app.get("/api/healthz", handlerReadiness);
 
-// Calling the metrics handler when the /metrics endpoint is accessed
+// Calling the metrics handler when the /metrics endpoint is accessedForbiddenError
 app.get("/admin/metrics", handlerMetrics);
 
 // Calling the reset-metrics handler when the /reset endpoint is accessed
@@ -99,6 +113,7 @@ app.listen(PORT, () => {
   console.log(`Server is running at http://localhost:${PORT}`);
 });
 
+// # Creating middlewares
 
 // --- 2 - Creating the middleware which  logs non-OK responses----
 function middlewareLogResponses(req: Request, res: Response, next: () => void) {
@@ -120,7 +135,29 @@ function middlewareMetricsInc(req: Request, res: Response, next: NextFunction){
   next();
 }
 
+// # Creating errors classes
 
+class NotFoundError extends Error {
+  constructor(message: string) {
+    super(message);
+  }    
+}
 
+class BadRequestError extends Error{
+  constructor(message: string){
+    super(message);
+  }
+}
 
+class UnauthorizedError extends Error{
+  constructor(message: string){
+    super(message);
+  }
+}
+
+class ForbiddenError extends Error{
+  constructor(message: string){
+    super(message);
+  }
+}
 
