@@ -24,7 +24,7 @@ const handlerMetrics  = (req: Request, res: Response) => {
     <html>
   <body>
     <h1>Welcome, Chirpy Admin</h1>
-    <p>Chirpy has been visited ${config.fileserverHits} times!</p>
+    <p>Chirpy has been visited ${config.api.fileserverHits} times!</p>
   </body>
 </html>
     `
@@ -33,9 +33,9 @@ const handlerMetrics  = (req: Request, res: Response) => {
 
 // Defining the handler that resets the fileserverHits counter to 0
 const handlerResetMetrics = (req: Request, res: Response) => {
-  config.fileserverHits = 0;
+  config.api.fileserverHits = 0;
   res.set("Content-Type", "text/plain; charset=utf-8");
-  res.send(`Hits counter reset to: ${config.fileserverHits}`);
+  res.send(`Hits counter reset to: ${config.api.fileserverHits}`);
 }
 
 // Create a list of words to be filtered out
@@ -131,7 +131,7 @@ function middlewareLogResponses(req: Request, res: Response, next: () => void) {
 }
 
 function middlewareMetricsInc(req: Request, res: Response, next: NextFunction){
-  config.fileserverHits++;
+  config.api.fileserverHits++;
   next();
 }
 
