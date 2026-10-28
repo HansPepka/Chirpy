@@ -1,6 +1,7 @@
 import express, { NextFunction } from "express";
 import {Request, Response} from "express";
 import {config}  from "./config.js";
+import { createUser, deleteAllUsers } from "./db/queries/users.js";
 
 const app = express();
 const PORT = 8080;
@@ -48,7 +49,7 @@ async function handlerValidateChirp(req: Request, res: Response) {
     body: string;
   };
 
-  // 3. Turn the JSON text into a JavaScript object (this is the risky part)
+  // 3. Turn the JSON text into a JavaScript object (this is the easy way)
   const params: responseData = req.body;
  
   // 5. Apply the 140-character rule
@@ -66,7 +67,7 @@ async function handlerValidateChirp(req: Request, res: Response) {
   res.status(200).send({"cleanedBody": `${params.body}`});
 }
 
-// Error-handling middleware: we defined how the server should throw errors based on the code.
+// Error-handlina useg middleware: we defined how the server should throw errors based on the code.
 
 const errorHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {
   if (err instanceof NotFoundError){
@@ -82,6 +83,40 @@ const errorHandler = (err: Error, req: Request, res: Response, next: NextFunctio
     res.status(403).json({error: err.message})
   }
 };
+
+// Handler for creating a new user :
+
+async function userCreateHandler (req: Request, res:Response) {
+  const {email} = req.body;
+
+  if(!email){
+    res.status(400).json({error: "Email is required"});
+    return;
+  }
+  const user = await createUser(email);
+
+  res.status(201).json({
+    id: user.id,
+    email: user.email,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+  });
+
+}
+
+// Creating a handler to reset all the users of the db :
+
+async function handlerReset(req: Request, res: Response){
+  if (config.api.platform !== "dev"){
+    return res.status(403).json({error: "Forbidden"});
+  }
+
+  config.api.fileserverHits = 0;
+
+  await deleteAllUsers();
+
+  res.status(200).send("Reset complete");
+}
 
 // # Callling handlers, middlewares and defining endpoints
 
@@ -108,6 +143,10 @@ app.use("/app", express.static("./src/app"));
 app.post("/api/validate_chirp", handlerValidateChirp);
 
 app.use(errorHandler);
+
+app.post("/api/users", userCreateHandler);
+
+app.post("/admin/reset", handlerReset);
 
 app.listen(PORT, () => {
   console.log(`Server is running at http://localhost:${PORT}`);

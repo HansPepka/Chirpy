@@ -21,6 +21,7 @@ function envNumberOrThrow(key: string): number {
 type APIConfig = {
   fileserverHits: number;
   port: number;
+  platform: string
 };
 
 type DBConfig = {
@@ -37,6 +38,7 @@ export const config: Config = {
   api: {
     fileserverHits: 0,
     port: envNumberOrThrow("PORT"),
+    platform: envOrThrow("PLATFORM")
   },
   db: {
     dbURL: envOrThrow("DB_URL"),
