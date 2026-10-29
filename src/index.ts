@@ -108,7 +108,8 @@ async function userCreateHandler (req: Request, res:Response) {
 
 async function handlerReset(req: Request, res: Response){
   if (config.api.platform !== "dev"){
-    return res.status(403).json({error: "Forbidden"});
+    res.status(403).json({error: "Forbidden"});
+    return;
   }
 
   config.api.fileserverHits = 0;
@@ -127,7 +128,7 @@ app.get("/api/healthz", handlerReadiness);
 app.get("/admin/metrics", handlerMetrics);
 
 // Calling the reset-metrics handler when the /reset endpoint is accessed
-app.post("/admin/reset", handlerResetMetrics);
+//app.post("/admin/reset", handlerResetMetrics);
 
 // Middleware to log non-OK responses
 app.use(middlewareLogResponses);

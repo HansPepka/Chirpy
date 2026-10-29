@@ -10,6 +10,5 @@ export async function createUser(email: string) {
 }
 
 export async function deleteAllUsers(){
-  const result = await db.delete(users).returning();
-  return result;
+  await db.delete(users);
 }
