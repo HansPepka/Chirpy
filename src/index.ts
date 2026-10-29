@@ -2,6 +2,7 @@ import express, { NextFunction } from "express";
 import {Request, Response} from "express";
 import {config}  from "./config.js";
 import { createUser, deleteAllUsers } from "./db/queries/users.js";
+import { createChirp } from "./db/queries/chirps.js";
 
 const app = express();
 const PORT = 8080;
@@ -41,31 +42,6 @@ const handlerResetMetrics = (req: Request, res: Response) => {
 
 // Create a list of words to be filtered out
 const list = ["kerfuffle", "sharbert", "fornax"];
-
-
-// --- 3 - Creating the handler that validates the chirp ----
-async function handlerValidateChirp(req: Request, res: Response) {
-  type responseData = {
-    body: string;
-  };
-
-  // 3. Turn the JSON text into a JavaScript object (this is the easy way)
-  const params: responseData = req.body;
- 
-  // 5. Apply the 140-character rule
-  if (params.body.length > 140) {
-     throw new BadRequestError("Chirp is too long. Max length is 140");
-  }
-  
-  let list1 = params.body.split(" ");
-    for (const word of list) {
-     list1 = list1.map((w) => w.toLowerCase() === word ? "****" : w);
-    }
-  params.body = list1.join(" ");
-
-  // 6. All good
-  res.status(200).send({"cleanedBody": `${params.body}`});
-}
 
 // Error-handlina useg middleware: we defined how the server should throw errors based on the code.
 
@@ -119,6 +95,35 @@ async function handlerReset(req: Request, res: Response){
   res.status(200).send("Reset complete");
 }
 
+
+
+
+
+// 4. Handler which accepts payload as JSON and provide a message :
+
+async function createChirpHandler (req: Request, res: Response){
+  type responseData = {
+    body: string;
+    userId: string;
+  };
+
+  const {body, userId} = req.body;
+ 
+  // 5. Apply the 140-character rule
+  if (body.length > 140) {
+     throw new BadRequestError("Chirp is too long. Max length is 140");
+  }
+
+  const chirp = await createChirp(body, userId);
+  // 6. All good
+  res.status(201).json(chirp);
+}
+
+
+
+
+
+
 // # Callling handlers, middlewares and defining endpoints
 
 // Calling the readiness handler when the /healthz endpoint is accessed
@@ -141,13 +146,15 @@ app.use(middlewareMetricsInc);
 
 app.use("/app", express.static("./src/app"));
 
-app.post("/api/validate_chirp", handlerValidateChirp);
+//app.post("/api/validate_chirp", handlerValidateChirp);
 
 app.use(errorHandler);
 
 app.post("/api/users", userCreateHandler);
 
 app.post("/admin/reset", handlerReset);
+
+app.post("/api/chirps", createChirpHandler);
 
 app.listen(PORT, () => {
   console.log(`Server is running at http://localhost:${PORT}`);
