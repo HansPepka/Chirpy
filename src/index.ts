@@ -2,7 +2,7 @@ import express, { NextFunction } from "express";
 import {Request, Response} from "express";
 import {config}  from "./config.js";
 import { createUser, deleteAllUsers } from "./db/queries/users.js";
-import { createChirp } from "./db/queries/chirps.js";
+import { createChirp, retrieveChirps, retrieveOneChirp } from "./db/queries/chirps.js";
 
 const app = express();
 const PORT = 8080;
@@ -40,9 +40,6 @@ const handlerResetMetrics = (req: Request, res: Response) => {
   res.send(`Hits counter reset to: ${config.api.fileserverHits}`);
 }
 
-// Create a list of words to be filtered out
-const list = ["kerfuffle", "sharbert", "fornax"];
-
 // Error-handlina useg middleware: we defined how the server should throw errors based on the code.
 
 const errorHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {
@@ -57,6 +54,9 @@ const errorHandler = (err: Error, req: Request, res: Response, next: NextFunctio
   }
   else if(err instanceof ForbiddenError){
     res.status(403).json({error: err.message})
+  }else{
+    console.log(err);
+    res.status(500).json({error : "Something went wring on our end"});
   }
 };
 
@@ -97,7 +97,8 @@ async function handlerReset(req: Request, res: Response){
 
 
 // 4. Handler which accepts payload as JSON and provide a message :
-const BAD_WORDS = ["kerfuffle", "sharbert", "formax"]
+// Create a list of words to be filtered out
+const list = ["kerfuffle", "sharbert", "fornax"];
 async function createChirpHandler (req: Request, res: Response){
   type ChirpRequest = {
     body: string;
@@ -116,7 +117,7 @@ async function createChirpHandler (req: Request, res: Response){
   }
 
   let list1 = body.split(" ");
-    for (const word of BAD_WORDS) {
+    for (const word of list) {
      list1 = list1.map((w) => w.toLowerCase() === word ? "****" : w);
     }
   body = list1.join(" ");
@@ -124,6 +125,29 @@ async function createChirpHandler (req: Request, res: Response){
   const chirp = await createChirp(body, userId);
   // 6. All good
   res.status(201).json(chirp);
+}
+
+async function allChirps(req: Request, res: Response){
+
+  type ChirpRequest = {
+    body: string;
+    userId: string;
+  };
+
+  const chirp = await retrieveChirps();
+
+  res.status(200).json(chirp);
+}
+
+
+//Handler to return just one chirp :
+async function oneChirp(req: Request<{chirpId: string}>, res: Response){
+  const {chirpId} = req.params;
+  const chirp = await retrieveOneChirp(chirpId);
+  if (!chirp){
+    throw new NotFoundError("Chirp not found");
+  }
+  res.status(200).json(chirp);
 }
 
 // # Callling handlers, middlewares and defining endpoints
@@ -150,13 +174,17 @@ app.use("/app", express.static("./src/app"));
 
 //app.post("/api/validate_chirp", handlerValidateChirp);
 
-app.use(errorHandler);
-
 app.post("/api/users", userCreateHandler);
 
 app.post("/admin/reset", handlerReset);
 
 app.post("/api/chirps", createChirpHandler);
+
+app.get("/api/chirps", allChirps);
+
+app.get("/api/chirps/:chirpId", oneChirp);
+
+app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log(`Server is running at http://localhost:${PORT}`);
