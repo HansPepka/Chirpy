@@ -11,5 +11,5 @@ HTTP_servers.md
 .env
 
 # Package
-package.json
-package-lock.json
+/package.json
+/package-lock.json
