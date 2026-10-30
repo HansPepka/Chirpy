@@ -96,33 +96,35 @@ async function handlerReset(req: Request, res: Response){
 }
 
 
-
-
-
 // 4. Handler which accepts payload as JSON and provide a message :
-
+const BAD_WORDS = ["kerfuffle", "sharbert", "formax"]
 async function createChirpHandler (req: Request, res: Response){
-  type responseData = {
+  type ChirpRequest = {
     body: string;
     userId: string;
   };
 
-  const {body, userId} = req.body;
+  let {body, userId}: ChirpRequest = req.body;
+
+  if (!body || !userId){
+    throw new BadRequestError("Missing body or userId");
+  }
  
   // 5. Apply the 140-character rule
   if (body.length > 140) {
      throw new BadRequestError("Chirp is too long. Max length is 140");
   }
 
+  let list1 = body.split(" ");
+    for (const word of BAD_WORDS) {
+     list1 = list1.map((w) => w.toLowerCase() === word ? "****" : w);
+    }
+  body = list1.join(" ");
+
   const chirp = await createChirp(body, userId);
   // 6. All good
   res.status(201).json(chirp);
 }
-
-
-
-
-
 
 // # Callling handlers, middlewares and defining endpoints
 

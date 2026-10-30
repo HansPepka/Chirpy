@@ -9,3 +9,7 @@ HTTP_servers.md
 
 # Environment variables :
 .env
+
+# Package
+package.json
+package-lock.json
