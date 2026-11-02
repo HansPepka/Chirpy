@@ -3,6 +3,7 @@ import {Request, Response} from "express";
 import {config}  from "./config.js";
 import { createUser, deleteAllUsers } from "./db/queries/users.js";
 import { createChirp, retrieveChirps, retrieveOneChirp } from "./db/queries/chirps.js";
+import { hashPassword, checkPasswordHash } from "./auth.js";
 
 const app = express();
 const PORT = 8080;
@@ -63,19 +64,25 @@ const errorHandler = (err: Error, req: Request, res: Response, next: NextFunctio
 // Handler for creating a new user :
 
 async function userCreateHandler (req: Request, res:Response) {
-  const {email} = req.body;
+  const {email, password} = req.body;
 
   if(!email){
     res.status(400).json({error: "Email is required"});
     return;
   }
-  const user = await createUser(email);
+
+  if(!password){
+    res.status(400).json({error: "Wrong password"});
+  }
+
+  const user = await createUser(email, password);
 
   res.status(201).json({
     id: user.id,
     email: user.email,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
+    password: user.hashedPassword,
   });
 
 }
@@ -183,6 +190,8 @@ app.post("/api/chirps", createChirpHandler);
 app.get("/api/chirps", allChirps);
 
 app.get("/api/chirps/:chirpId", oneChirp);
+
+app.post("", hashPassword);
 
 app.use(errorHandler);
 

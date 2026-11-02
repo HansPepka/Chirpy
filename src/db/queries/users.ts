@@ -1,10 +1,10 @@
 import { db } from "../index.js";
 import { NewUser, users } from "../schema.js";
 
-export async function createUser(email: string) {
+export async function createUser(email: string, password: string) {
   const [result] = await db
     .insert(users)
-    .values({ email })
+    .values({ email})
     .returning();
   return result;
 }
