@@ -1,7 +1,7 @@
 import express, { NextFunction } from "express";
 import {Request, Response} from "express";
 import {config}  from "./config.js";
-import { createUser, deleteAllUsers } from "./db/queries/users.js";
+import { createUser, deleteAllUsers, getUserByEmail } from "./db/queries/users.js";
 import { createChirp, retrieveChirps, retrieveOneChirp } from "./db/queries/chirps.js";
 import { hashPassword, checkPasswordHash } from "./auth.js";
 
@@ -65,24 +65,24 @@ const errorHandler = (err: Error, req: Request, res: Response, next: NextFunctio
 
 async function userCreateHandler (req: Request, res:Response) {
   const {email, password} = req.body;
-
+  
   if(!email){
     res.status(400).json({error: "Email is required"});
     return;
   }
 
   if(!password){
-    res.status(400).json({error: "Wrong password"});
+    res.status(400).json({error: "Password is required"});
   }
 
-  const user = await createUser(email, password);
-
+  const hashedPassword = await hashPassword(password);
+  const user = await createUser({email, hashedPassword})
+ 
   res.status(201).json({
     id: user.id,
     email: user.email,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
-    password: user.hashedPassword,
   });
 
 }
@@ -157,6 +157,29 @@ async function oneChirp(req: Request<{chirpId: string}>, res: Response){
   res.status(200).json(chirp);
 }
 
+async function loginHandler(req: Request, res: Response){
+  const {password, email } = req.body;
+  const user = await getUserByEmail(email);
+  if (!user){
+    res.status(401).json({error: "incorrect email or password"});
+    return;
+  }
+
+  const matches = await checkPasswordHash(password, user.hashedPassword);
+  if (!matches) {
+    res.status(401).json({ error: "incorrect email or password" });
+    return;
+  }
+  res.status(200).json(
+    {
+      id: user.id,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      email: user.email,
+    }
+  )
+}
+
 // # Callling handlers, middlewares and defining endpoints
 
 // Calling the readiness handler when the /healthz endpoint is accessed
@@ -187,11 +210,11 @@ app.post("/admin/reset", handlerReset);
 
 app.post("/api/chirps", createChirpHandler);
 
+app.post("/api/login", loginHandler);
+
 app.get("/api/chirps", allChirps);
 
 app.get("/api/chirps/:chirpId", oneChirp);
-
-app.post("", hashPassword);
 
 app.use(errorHandler);
 

@@ -11,3 +11,4 @@ export async function checkPasswordHash(password: string, hash: string): Promise
         return false;
     }
 }
+
