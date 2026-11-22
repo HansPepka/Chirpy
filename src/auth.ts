@@ -1,7 +1,8 @@
 import * as argon2 from "argon2";
 import jwt from "jsonwebtoken";
 import type {JwtPayload} from "jsonwebtoken";
-
+import { BadRequestError, NotFoundError, UnauthorizedError, ForbiddenError } from "./index.js";
+import type {Request} from "express"
 
 export async function hashPassword(password: string): Promise<string>{
     return argon2.hash(password);
@@ -15,6 +16,7 @@ export async function checkPasswordHash(password: string, hash: string): Promise
     }
 }
 
+// Function to make a JWT
 export function makeJWT(userID: string, expiresIn: number, secret: string):string {
     const iat = Math.floor(Date.now() / 1000);
     const exp = iat + expiresIn;
@@ -31,7 +33,7 @@ export function makeJWT(userID: string, expiresIn: number, secret: string):strin
     return jwt.sign(tokenPayload, secret);
 }
 
-
+// Function to validate a JWT
 export function validateJWT(tokenString: string, secret: string):string{
     try{
         const decoded = jwt.verify(tokenString, secret) as JwtPayload;
@@ -45,4 +47,33 @@ export function validateJWT(tokenString: string, secret: string):string{
         // Throw a suitable error if validation fails
         throw new Error(`Invalid or expired token: ${(error as Error).message}`);
     }
+}
+
+// Function to extract a bearer token from an HTTP header (authorization)
+export function extractBearerToken(authorization: string | undefined): string {
+  // No header at all
+  if (!authorization) {
+    throw new BadRequestError("Malformed authorization header");
+  }
+
+  const parts = authorization.trim().split(/\s+/);
+
+  // Must be exactly two parts, and the first must be "Bearer"
+  if (parts.length !== 2 || parts[0] !== "Bearer") {
+    throw new BadRequestError("Malformed authorization header");
+  }
+
+  return parts[1];
+}
+
+// Function to get a Bearer token from the authorization header
+export function getBearerToken(req: Request): string{
+    const authHeader = req.get("Authorization");
+
+    if(!authHeader){
+        throw new UnauthorizedError("Missing authorization header");
+    }
+
+    return extractBearerToken(authHeader);
+
 }

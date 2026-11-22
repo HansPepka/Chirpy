@@ -3,7 +3,7 @@ import {Request, Response} from "express";
 import {config}  from "./config.js";
 import { createUser, deleteAllUsers, getUserByEmail } from "./db/queries/users.js";
 import { createChirp, retrieveChirps, retrieveOneChirp } from "./db/queries/chirps.js";
-import { hashPassword, checkPasswordHash } from "./auth.js";
+import { hashPassword, checkPasswordHash, makeJWT, validateJWT, getBearerToken } from "./auth.js";
 
 const app = express();
 const PORT = 8080;
@@ -43,7 +43,7 @@ const handlerResetMetrics = (req: Request, res: Response) => {
 
 // Error-handlina useg middleware: we defined how the server should throw errors based on the code.
 
-const errorHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {
+export const errorHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {
   if (err instanceof NotFoundError){
     res.status(404).json({error: err.message})
   }
@@ -106,31 +106,40 @@ async function handlerReset(req: Request, res: Response){
 // 4. Handler which accepts payload as JSON and provide a message :
 // Create a list of words to be filtered out
 const list = ["kerfuffle", "sharbert", "fornax"];
-async function createChirpHandler (req: Request, res: Response){
+async function createChirpHandler(req: Request, res: Response) {
+  // 1. Who is this? Get the token from the header and check it
+  const token = getBearerToken(req);
+
+  let userId: string;
+  try {
+    userId = validateJWT(token, config.jwt.secret);
+  } catch (err) {
+    throw new UnauthorizedError("Invalid or expired token");
+  }
+
+  // 2. Check the chirp itself (only "body" comes from the request now)
   type ChirpRequest = {
     body: string;
-    userId: string;
   };
+  let { body }: ChirpRequest = req.body;
 
-  let {body, userId}: ChirpRequest = req.body;
-
-  if (!body || !userId){
-    throw new BadRequestError("Missing body or userId");
+  if (!body) {
+    throw new BadRequestError("Missing body");
   }
- 
-  // 5. Apply the 140-character rule
+
   if (body.length > 140) {
-     throw new BadRequestError("Chirp is too long. Max length is 140");
+    throw new BadRequestError("Chirp is too long. Max length is 140");
   }
 
-  let list1 = body.split(" ");
-    for (const word of list) {
-     list1 = list1.map((w) => w.toLowerCase() === word ? "****" : w);
-    }
-  body = list1.join(" ");
+  // 3. Replace bad words
+  let words = body.split(" ");
+  for (const badWord of list) {
+    words = words.map((w) => (w.toLowerCase() === badWord ? "****" : w));
+  }
+  body = words.join(" ");
 
+  // 4. Save it with the user ID from the token
   const chirp = await createChirp(body, userId);
-  // 6. All good
   res.status(201).json(chirp);
 }
 
@@ -158,11 +167,17 @@ async function oneChirp(req: Request<{chirpId: string}>, res: Response){
 }
 
 async function loginHandler(req: Request, res: Response){
-  const {password, email } = req.body;
+  const {password, email, expiresInSeconds } = req.body;
   const user = await getUserByEmail(email);
   if (!user){
     res.status(401).json({error: "incorrect email or password"});
     return;
+  }
+
+  const ONE_HOUR = 60 * 60; // 3600 seconds
+  let expiresIn = ONE_HOUR;
+  if (typeof expiresInSeconds === "number" && expiresInSeconds > 0) {
+    expiresIn = Math.min(expiresInSeconds, ONE_HOUR);
   }
 
   const matches = await checkPasswordHash(password, user.hashedPassword);
@@ -170,12 +185,16 @@ async function loginHandler(req: Request, res: Response){
     res.status(401).json({ error: "incorrect email or password" });
     return;
   }
+
+  const token = makeJWT(user.id, expiresIn, config.jwt.secret);
+
   res.status(200).json(
     {
       id: user.id,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
       email: user.email,
+      token: token,
     }
   )
 }
@@ -246,25 +265,25 @@ function middlewareMetricsInc(req: Request, res: Response, next: NextFunction){
 
 // # Creating errors classes
 
-class NotFoundError extends Error {
+export class NotFoundError extends Error {
   constructor(message: string) {
     super(message);
   }    
 }
 
-class BadRequestError extends Error{
+export class BadRequestError extends Error{
   constructor(message: string){
     super(message);
   }
 }
 
-class UnauthorizedError extends Error{
+export class UnauthorizedError extends Error{
   constructor(message: string){
     super(message);
   }
 }
 
-class ForbiddenError extends Error{
+export class ForbiddenError extends Error{
   constructor(message: string){
     super(message);
   }

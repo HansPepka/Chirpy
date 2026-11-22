@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll } from "vitest";
-import { makeJWT, validateJWT } from "./auth.js";
+import { makeJWT, validateJWT, extractBearerToken } from "./auth.js";
+import { BadRequestError } from "./index.js";
 
 describe("JWT authentication", () => {
   const secret = "correctSecret1234";
@@ -37,5 +38,27 @@ describe("JWT authentication", () => {
     expect(() => {
       validateJWT(token, wrongSecret);
     }).toThrow();
+  });
+});
+
+describe("extractBearerToken", () => {
+  it("returns the token from a valid header", () => {
+    expect(extractBearerToken("Bearer abc123")).toBe("abc123");
+  });
+
+  it("ignores extra whitespace", () => {
+    expect(extractBearerToken("  Bearer   abc123  ")).toBe("abc123");
+  });
+
+  it("throws when the header is missing", () => {
+    expect(() => extractBearerToken(undefined)).toThrow(BadRequestError);
+  });
+
+  it("throws when the scheme is not Bearer", () => {
+    expect(() => extractBearerToken("Basic abc123")).toThrow(BadRequestError);
+  });
+
+  it("throws when the token is empty", () => {
+    expect(() => extractBearerToken("Bearer ")).toThrow(BadRequestError);
   });
 });

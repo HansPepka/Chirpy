@@ -29,9 +29,14 @@ type DBConfig = {
   migrationsFolder: string;
 };
 
+type JWTConfig = {
+  secret: string;
+}
+
 type Config = {
   api: APIConfig;
   db: DBConfig;
+  jwt: JWTConfig;
 };
 
 export const config: Config = {
@@ -43,6 +48,9 @@ export const config: Config = {
   db: {
     dbURL: envOrThrow("DB_URL"),
     migrationsFolder: "./src/db",
+  },
+  jwt: {
+    secret: envOrThrow("JWT_SECRET"),
   }
 };
 
