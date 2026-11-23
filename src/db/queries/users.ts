@@ -1,3 +1,4 @@
+import { hashPassword } from "../../auth.js";
 import { db } from "../index.js";
 import { NewUser, users, refreshTokens } from "../schema.js";
 import {eq} from "drizzle-orm"
@@ -48,5 +49,18 @@ export async function revokeRefreshToken(token:string) {
     })
     .where(eq(refreshTokens.token, token))
     .returning();
+  return result;
+}
+
+export async function updatedCred(userId:string, email:string, password: string){
+  const [result] = await db
+  .update(users)
+  .set({
+    hashedPassword : password,
+    email: email,
+    updatedAt: new Date(),
+  })
+  .where(eq(users.id, userId))
+  .returning();
   return result;
 }

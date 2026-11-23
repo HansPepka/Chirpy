@@ -1,7 +1,7 @@
 import express, { NextFunction } from "express";
 import {Request, Response} from "express";
 import {config}  from "./config.js";
-import { createUser, deleteAllUsers, getRefreshToken, getUserByEmail, revokeRefreshToken, saveRefreshToken } from "./db/queries/users.js";
+import { createUser, deleteAllUsers, getRefreshToken, getUserByEmail, revokeRefreshToken, saveRefreshToken, updatedCred } from "./db/queries/users.js";
 import { createChirp, retrieveChirps, retrieveOneChirp } from "./db/queries/chirps.js";
 import { hashPassword, checkPasswordHash, makeJWT, validateJWT, getBearerToken, makeRefreshToken } from "./auth.js";
 import { timestamp } from "drizzle-orm/gel-core";
@@ -230,6 +230,39 @@ async function revokeTokenHandler(req: Request, res: Response){
   res.status(204).send();
 }
 
+async function updateCredentials(req: Request, res: Response){
+  let userId: string;
+
+  try{
+    const token = getBearerToken(req);
+    userId = validateJWT(token, config.jwt.secret);
+  }catch (err){
+    throw new UnauthorizedError("Invalid or missing token")
+  }
+
+  const {password, email} = req.body;
+
+  if (!email || !password){
+    throw new BadRequestError("Missing email or password")
+  }
+  
+
+  let hashedPassword = await hashPassword(password);
+
+  let user = await updatedCred(userId, email, hashedPassword);
+
+  if (!user){
+    throw new NotFoundError("User not found");
+  }
+
+  res.status(200).json({
+    id: user.id,
+    email:user.email,
+    updatedAt: user.updatedAt,
+    createdAt: user.createdAt,
+  });
+}
+
 // # Callling handlers, middlewares and defining endpoints
 
 // Calling the readiness handler when the /healthz endpoint is accessed
@@ -269,6 +302,8 @@ app.post("/api/revoke", revokeTokenHandler);
 app.get("/api/chirps", allChirps);
 
 app.get("/api/chirps/:chirpId", oneChirp);
+
+app.put("/api/users", updateCredentials)
 
 app.use(errorHandler);
 
