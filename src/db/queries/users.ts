@@ -1,6 +1,6 @@
 import { hashPassword } from "../../auth.js";
 import { db } from "../index.js";
-import { NewUser, users, refreshTokens } from "../schema.js";
+import { NewUser, users, refreshTokens, chirps } from "../schema.js";
 import {eq} from "drizzle-orm"
 
 export async function createUser(user:{email: string, hashedPassword: string}) {
@@ -61,6 +61,24 @@ export async function updatedCred(userId:string, email:string, password: string)
     updatedAt: new Date(),
   })
   .where(eq(users.id, userId))
+  .returning();
+  return result;
+}
+
+// Check that a user is the author of a chirp:
+export async function getChirp(chirpId: string) {
+  const [result] = await db
+    .select()
+    .from(chirps)
+    .where(eq(chirps.id, chirpId));
+  return result; 
+}
+
+// Delete the chirp based on its id
+export async function deleteChirpById(chirpId: string){
+  const [result] = await db
+  .delete(chirps)
+  .where(eq(chirps.id, chirpId))
   .returning();
   return result;
 }

@@ -1,7 +1,7 @@
 import express, { NextFunction } from "express";
 import {Request, Response} from "express";
 import {config}  from "./config.js";
-import { createUser, deleteAllUsers, getRefreshToken, getUserByEmail, revokeRefreshToken, saveRefreshToken, updatedCred } from "./db/queries/users.js";
+import { createUser, deleteAllUsers, deleteChirpById, getChirp, getRefreshToken, getUserByEmail, revokeRefreshToken, saveRefreshToken, updatedCred } from "./db/queries/users.js";
 import { createChirp, retrieveChirps, retrieveOneChirp } from "./db/queries/chirps.js";
 import { hashPassword, checkPasswordHash, makeJWT, validateJWT, getBearerToken, makeRefreshToken } from "./auth.js";
 import { timestamp } from "drizzle-orm/gel-core";
@@ -263,6 +263,33 @@ async function updateCredentials(req: Request, res: Response){
   });
 }
 
+async function deleteChirp(req: Request, res: Response){
+  let userId: string;
+  try{
+    const token = getBearerToken(req);
+    userId = validateJWT(token, config.jwt.secret);
+  }catch (err){
+    throw new UnauthorizedError("Invalid or missing token")
+  }
+
+  const chirpId = req.params.chirpId;
+  if (typeof chirpId !== "string") {
+  throw new BadRequestError("Invalid chirp ID");
+}
+
+  const chirp = await getChirp(chirpId);
+  if (!chirp){
+    throw new NotFoundError("Chirp not found");
+  }
+
+  if (chirp.userId !== userId){
+    throw new ForbiddenError("Access denied");
+  }
+
+  await deleteChirpById(chirpId);
+  res.status(204).send();
+}
+
 // # Callling handlers, middlewares and defining endpoints
 
 // Calling the readiness handler when the /healthz endpoint is accessed
@@ -303,7 +330,9 @@ app.get("/api/chirps", allChirps);
 
 app.get("/api/chirps/:chirpId", oneChirp);
 
-app.put("/api/users", updateCredentials)
+app.put("/api/users", updateCredentials);
+
+app.delete("/api/chirps/:chirpId", deleteChirp);
 
 app.use(errorHandler);
 
