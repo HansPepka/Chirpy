@@ -1,9 +1,10 @@
 import express, { NextFunction } from "express";
 import {Request, Response} from "express";
 import {config}  from "./config.js";
-import { createUser, deleteAllUsers, getUserByEmail } from "./db/queries/users.js";
+import { createUser, deleteAllUsers, getRefreshToken, getUserByEmail, revokeRefreshToken, saveRefreshToken } from "./db/queries/users.js";
 import { createChirp, retrieveChirps, retrieveOneChirp } from "./db/queries/chirps.js";
-import { hashPassword, checkPasswordHash, makeJWT, validateJWT, getBearerToken } from "./auth.js";
+import { hashPassword, checkPasswordHash, makeJWT, validateJWT, getBearerToken, makeRefreshToken } from "./auth.js";
+import { timestamp } from "drizzle-orm/gel-core";
 
 const app = express();
 const PORT = 8080;
@@ -167,7 +168,7 @@ async function oneChirp(req: Request<{chirpId: string}>, res: Response){
 }
 
 async function loginHandler(req: Request, res: Response){
-  const {password, email, expiresInSeconds } = req.body;
+  const {password, email } = req.body;
   const user = await getUserByEmail(email);
   if (!user){
     res.status(401).json({error: "incorrect email or password"});
@@ -175,10 +176,6 @@ async function loginHandler(req: Request, res: Response){
   }
 
   const ONE_HOUR = 60 * 60; // 3600 seconds
-  let expiresIn = ONE_HOUR;
-  if (typeof expiresInSeconds === "number" && expiresInSeconds > 0) {
-    expiresIn = Math.min(expiresInSeconds, ONE_HOUR);
-  }
 
   const matches = await checkPasswordHash(password, user.hashedPassword);
   if (!matches) {
@@ -186,7 +183,10 @@ async function loginHandler(req: Request, res: Response){
     return;
   }
 
-  const token = makeJWT(user.id, expiresIn, config.jwt.secret);
+  const accessToken = makeJWT(user.id, ONE_HOUR, config.jwt.secret);
+
+  const refreshToken = makeRefreshToken();
+  await saveRefreshToken(user.id, refreshToken);
 
   res.status(200).json(
     {
@@ -194,9 +194,40 @@ async function loginHandler(req: Request, res: Response){
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
       email: user.email,
-      token: token,
+      token: accessToken,
+      refreshToken: refreshToken,
     }
   )
+}
+
+async function refreshTokenHandler(req: Request, res:Response){
+  const refreshToken = getBearerToken(req);
+
+  const stored = await getRefreshToken(refreshToken);
+
+  if (!stored || stored.revokedAt || stored.expiresAt < new Date()){
+    throw new UnauthorizedError("Invalid refresh token");
+  }
+
+  const ONE_HOUR = 60*60;
+
+  const accessToken = makeJWT(stored.userId, ONE_HOUR, config.jwt.secret);
+
+  res.status(200).json({token: accessToken})
+}
+
+async function revokeTokenHandler(req: Request, res: Response){
+  const refreshToken = getBearerToken(req);
+
+
+  const revoked = await revokeRefreshToken(refreshToken);
+  //const stored = await getRefreshToken(refreshToken);
+
+  if (!revoked){
+    throw new UnauthorizedError("Invalid refresh token");
+  }
+
+  res.status(204).send();
 }
 
 // # Callling handlers, middlewares and defining endpoints
@@ -230,6 +261,10 @@ app.post("/admin/reset", handlerReset);
 app.post("/api/chirps", createChirpHandler);
 
 app.post("/api/login", loginHandler);
+
+app.post("/api/refresh", refreshTokenHandler);
+
+app.post("/api/revoke", revokeTokenHandler);
 
 app.get("/api/chirps", allChirps);
 

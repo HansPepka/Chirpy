@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import type {JwtPayload} from "jsonwebtoken";
 import { BadRequestError, NotFoundError, UnauthorizedError, ForbiddenError } from "./index.js";
 import type {Request} from "express"
+import crypto from "crypto";
 
 export async function hashPassword(password: string): Promise<string>{
     return argon2.hash(password);
@@ -76,4 +77,10 @@ export function getBearerToken(req: Request): string{
 
     return extractBearerToken(authHeader);
 
+}
+
+// Function to generate a random 256-bit hex-encoded string :
+export function makeRefreshToken():string{
+    let data = crypto.randomBytes(32).toString("hex");
+    return data;
 }
