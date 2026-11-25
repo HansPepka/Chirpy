@@ -84,3 +84,22 @@ export function makeRefreshToken():string{
     let data = crypto.randomBytes(32).toString("hex");
     return data;
 }
+
+// To get extract an API key from a "Authorization" header
+
+export function getAPIKey(req: Request):string{
+    const authHeader = req.get("Authorization");
+    if(!authHeader){
+        throw new UnauthorizedError("Missing authorization header");
+    }
+
+    const parts = authHeader.trim().split(/\s+/);
+
+    // Must be exactly two parts, and the first must be "ApiKey"
+    if (parts.length !== 2 || parts[0] !== "ApiKey") {
+        throw new BadRequestError("Malformed authorization header");
+    }
+
+    return parts[1];
+}
+

@@ -29,6 +29,13 @@
       "when": 1795420374050,
       "tag": "0003_past_mastermind",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795612921856,
+      "tag": "0004_early_micromacro",
+      "breakpoints": true
     }
   ]
 }

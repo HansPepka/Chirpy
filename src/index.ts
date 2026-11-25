@@ -1,9 +1,9 @@
 import express, { NextFunction } from "express";
 import {Request, Response} from "express";
 import {config}  from "./config.js";
-import { createUser, deleteAllUsers, deleteChirpById, getChirp, getRefreshToken, getUserByEmail, revokeRefreshToken, saveRefreshToken, updatedCred } from "./db/queries/users.js";
+import { createUser, deleteAllUsers, deleteChirpById, getChirp, getRefreshToken, getUserByEmail, revokeRefreshToken, saveRefreshToken, updatedCred, upgradeChirpyRed } from "./db/queries/users.js";
 import { createChirp, retrieveChirps, retrieveOneChirp } from "./db/queries/chirps.js";
-import { hashPassword, checkPasswordHash, makeJWT, validateJWT, getBearerToken, makeRefreshToken } from "./auth.js";
+import { hashPassword, checkPasswordHash, makeJWT, validateJWT, getBearerToken, makeRefreshToken, getAPIKey } from "./auth.js";
 import { timestamp } from "drizzle-orm/gel-core";
 
 const app = express();
@@ -84,6 +84,7 @@ async function userCreateHandler (req: Request, res:Response) {
     email: user.email,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
+    isChirpyRed: user.isChirpyRed,
   });
 
 }
@@ -196,6 +197,7 @@ async function loginHandler(req: Request, res: Response){
       email: user.email,
       token: accessToken,
       refreshToken: refreshToken,
+      isChirpyRed: user.isChirpyRed,
     }
   )
 }
@@ -260,6 +262,7 @@ async function updateCredentials(req: Request, res: Response){
     email:user.email,
     updatedAt: user.updatedAt,
     createdAt: user.createdAt,
+    isChirpyRed: user.isChirpyRed,
   });
 }
 
@@ -288,6 +291,31 @@ async function deleteChirp(req: Request, res: Response){
 
   await deleteChirpById(chirpId);
   res.status(204).send();
+}
+
+async function upgradeUser(req: Request, res:Response){
+  const {event, data} = req.body;
+
+  if(getAPIKey(req) !== config.api.polka){
+    throw new UnauthorizedError("Non-valid API key");
+  }
+
+  if (event !== "user.upgraded"){
+    res.status(204).send();
+    return;
+  }
+
+  if (!data || typeof data.userId !== "string") {
+    throw new BadRequestError("Missing userId");
+  }
+
+  const user = await upgradeChirpyRed(data.userId);
+
+  if (!user){
+    throw new NotFoundError("User not found");
+  }
+
+  res.status(204).send()
 }
 
 // # Callling handlers, middlewares and defining endpoints
@@ -325,6 +353,8 @@ app.post("/api/login", loginHandler);
 app.post("/api/refresh", refreshTokenHandler);
 
 app.post("/api/revoke", revokeTokenHandler);
+
+app.post("/api/polka/webhooks", upgradeUser)
 
 app.get("/api/chirps", allChirps);
 
