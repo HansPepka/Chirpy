@@ -2,7 +2,7 @@ import express, { NextFunction } from "express";
 import {Request, Response} from "express";
 import {config}  from "./config.js";
 import { createUser, deleteAllUsers, deleteChirpById, getChirp, getRefreshToken, getUserByEmail, revokeRefreshToken, saveRefreshToken, updatedCred, upgradeChirpyRed } from "./db/queries/users.js";
-import { createChirp, retrieveChirps, retrieveOneChirp } from "./db/queries/chirps.js";
+import { createChirp, retrieveChirps, retrieveOneChirp, retrieveChirpsWithAuthor, sortAscending, sortDescending } from "./db/queries/chirps.js";
 import { hashPassword, checkPasswordHash, makeJWT, validateJWT, getBearerToken, makeRefreshToken, getAPIKey } from "./auth.js";
 import { timestamp } from "drizzle-orm/gel-core";
 
@@ -145,16 +145,38 @@ async function createChirpHandler(req: Request, res: Response) {
   res.status(201).json(chirp);
 }
 
-async function allChirps(req: Request, res: Response){
+async function allChirps(req:Request, res: Response){
 
-  type ChirpRequest = {
+  /*type ChirpRequest = {
     body: string;
     userId: string;
-  };
+  };*/
+  // An optional query parameter to specify the ID of the author:
+  //const authorId = req.query.authorId;
+  const sort = req.query.sort;
 
-  const chirp = await retrieveChirps();
+  /*if(!authorId){
+    const chirp = await retrieveChirps();
+    res.status(200).json(chirp);
+  }
 
-  res.status(200).json(chirp);
+  if (typeof authorId == "string" && authorId){
+   const chirp =  await retrieveChirpsWithAuthor(authorId);
+   res.status(200).json(chirp);
+  }*/
+
+  // An optional query parameter to sort:
+
+  if (typeof sort === "string" && sort === "asc"){
+    const chirp = await sortAscending();
+    res.status(200).json(chirp)
+  }else if (typeof sort === "string" && sort === "desc"){
+    const chirp = await sortDescending();
+    res.status(200).json(chirp)
+  }else if (!sort){
+    const chirp = await sortAscending();
+    res.status(200).json(chirp)
+  }
 }
 
 
