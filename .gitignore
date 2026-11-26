@@ -11,5 +11,11 @@ HTTP_servers.md
 .env
 
 # Package
-/package.json
-/package-lock.json
+package.json
+package-lock.json
+
+# Images
+database.png
+Decoupled_Architecture.png
+lifecycleJWT.png
+Monolith_Architecture.png
