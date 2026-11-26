@@ -9,6 +9,7 @@ HTTP_servers.md
 
 # Environment variables :
 .env
+*.log
 
 # Package
 package.json
